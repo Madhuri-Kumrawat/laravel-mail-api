@@ -1,0 +1,96 @@
+<?php
+namespace App\Http\Controllers\Api;
+
+use Illuminate\Http\Request;
+use App\Http\Controllers\Controller as Controller;
+use Validator;
+use App\Jobs\SendBulkEmailTest;
+use Illuminate\Support\Facades\Bus;
+
+class SendBulkMailController extends Controller
+{
+    
+    /**
+     * Dispatch a Job
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\Response
+     */
+    public function sendBulkMail(Request $request)
+    {
+        $input = $request->all();
+        $mailArray=[];
+        $count=0;
+        $response = [
+            'success' => false,
+            'message' => 'Something Went Wrong',
+        ];
+        $validator = Validator::make($input, [
+            'api_token'=>'required',
+            'emails' =>'required|array'
+        ]);
+        if($validator->fails()){
+            $response['message'] = "Validation Error";
+            $response['data'] = $validator->errors();
+            return response()->json($response, 400);         
+        }   
+        Validator::extend('is_file',function($attribute, $value, $params, $validator) {
+            if ($this->is_base64_encoded($value)){
+                $file_type = base64_decode($value);
+                // print_r($file_type);
+                $f = finfo_open();
+                $result = finfo_buffer($f, $file_type, FILEINFO_MIME_TYPE);
+                // print_r(FILEINFO_MIME_TYPE);
+                // print_r($result);
+                return in_array($result,['text/plain','image/png','image/jpeg','application/msword']);
+            }else{
+                return false;
+            }            
+        },"Invalid File type");
+        
+        foreach($input['emails'] as $mail){
+            $validator = Validator::make($mail, [
+                'toEmail' => 'required|email',
+                'subject' => 'required',
+                'body' => 'required',
+                "attachemnts"  => "array"
+            ]);
+            
+            if($validator->fails()) {
+                $response['data'] = $validator->errors();
+                return response()->json($response, 404); 
+            }
+            if(array_key_exists('attachemnts',$mail) && sizeof($mail['attachemnts'])>0){
+                foreach($mail['attachemnts'] as $attch){
+                    $validator = Validator::make($attch, [
+                        'value' =>'required|is_file',
+                        'name'=>'required'
+                    ]);
+                    if($validator->fails()) {
+                        $response['data'] = $validator->errors();
+                        return response()->json($response, 404); 
+                    }
+                }
+            }
+            $count++;
+        }    
+
+        /**** Now Dispatch a Job ***** */
+        $details['email'] = 'mk_rbc@gmail.com';
+        print_r($mailArray);
+        SendBulkEmailTest::dispatch(new SendBulkEmailTest($mailArray))->onQueue('sendingMail');
+
+        $response['success'] = true;
+        $response['message'] = 'Done';
+
+        return response()->json($response, 200);
+    }
+    function is_base64_encoded($data)
+    {
+        if (preg_match('%^[a-zA-Z0-9/+]*={0,2}$%', $data)) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+}
