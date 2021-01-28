@@ -36,8 +36,9 @@ class RegisterController extends Controller
    
         $input = $request->all();
         $input['password'] = bcrypt($input['password']);
+        $input['remember_token']= $this->generateToken();
         $user = User::create($input);
-        $success['token'] =  bcrypt($input['email']+''+$input['password']);
+        $success['token'] = $input['remember_token'] ;
         $success['name'] =  $user->name;
         $response = [
             'success' => true,
@@ -56,7 +57,10 @@ class RegisterController extends Controller
     {
         if(Auth::attempt(['email' => $request->email, 'password' => $request->password])){ 
             $user = Auth::user(); 
-            $success['token'] = bcrypt($request->password); 
+            $remember_token= $this->generateToken();
+            $user->remember_token=$remember_token;
+            $user->save();
+            $success['token'] = $remember_token; 
             $success['name'] =  $user->name;
             $response = [
                 'success' => true,
@@ -73,4 +77,8 @@ class RegisterController extends Controller
             return response()->json($response, 404); 
         } 
     }
+    function generateToken()
+    {
+        return md5(rand(1, 10) . microtime());
+    }   
 }

@@ -1,9 +1,20 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
     <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Welcome</title>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+
+        <title>Laravel</title>
+
+        <!-- Fonts -->
+        <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+
+       
+        <style>
+            body {
+                font-family: 'Nunito';
+            }
+        </style>
     </head>
 <body>
     <center>
@@ -12,6 +23,11 @@
 </h2>
 </center>
 <p>Hello, </p>
+<div>
+    <br/>
+    <p>Your Message: {{ $body }}</p>
+    <br/>
+</div>
 <strong>Thank you </strong>
 
 </body>

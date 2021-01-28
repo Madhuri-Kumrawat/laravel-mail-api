@@ -10,6 +10,8 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use App\Mail\BulkMailTask;
 use Mail;
+use Illuminate\Support\Facades\Storage;
+
 
 class SendBulkEmailTest implements ShouldQueue
 {
@@ -33,6 +35,10 @@ class SendBulkEmailTest implements ShouldQueue
     public function handle()
     {
         $email = new BulkMailTask();
-        Mail::queue($this->details['email'])->send($email);
+        $data=$this->details;
+        foreach ($data as $value) {           
+            $mdata=$value; 
+            Mail::to($value['toEmail'])->send(new BulkMailTask($value['subject'],$value));
+        }
     }
 }

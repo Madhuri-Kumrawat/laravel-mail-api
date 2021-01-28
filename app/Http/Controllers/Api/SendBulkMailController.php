@@ -5,7 +5,12 @@ use Illuminate\Http\Request;
 use App\Http\Controllers\Controller as Controller;
 use Validator;
 use App\Jobs\SendBulkEmailTest;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Bus;
+use App\Models\User;
+use App\Mail\BulkMailTask;
+use Mail;
+use Illuminate\Support\Facades\Storage;
 
 class SendBulkMailController extends Controller
 {
@@ -34,14 +39,23 @@ class SendBulkMailController extends Controller
             $response['data'] = $validator->errors();
             return response()->json($response, 400);         
         }   
+
+        ######################### CHECK TOKEN ##############################
+        $user = User::where('remember_token',$input['api_token'])->count(); 
+        if ($user<=0){
+            $response['message'] = "UnAuthorized USer";
+            $response['data'] = $validator->errors();
+            return response()->json($response, 400);      
+        }
+        
+        #######################################################
+        ############# Custom Validator for File Chaeck ##############
+        #######################################################
         Validator::extend('is_file',function($attribute, $value, $params, $validator) {
             if ($this->is_base64_encoded($value)){
                 $file_type = base64_decode($value);
-                // print_r($file_type);
                 $f = finfo_open();
                 $result = finfo_buffer($f, $file_type, FILEINFO_MIME_TYPE);
-                // print_r(FILEINFO_MIME_TYPE);
-                // print_r($result);
                 return in_array($result,['text/plain','image/png','image/jpeg','application/msword']);
             }else{
                 return false;
@@ -72,12 +86,14 @@ class SendBulkMailController extends Controller
                     }
                 }
             }
+            $mailArray[$count]=$mail;
+            if (!array_key_exists('attachemnts',$mail)){
+                $mailArray[$count]['attachemnts']=[];
+            }
             $count++;
         }    
-
+        
         /**** Now Dispatch a Job ***** */
-        $details['email'] = 'mk_rbc@gmail.com';
-        print_r($mailArray);
         SendBulkEmailTest::dispatch(new SendBulkEmailTest($mailArray))->onQueue('sendingMail');
 
         $response['success'] = true;

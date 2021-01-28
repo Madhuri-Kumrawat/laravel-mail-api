@@ -6,6 +6,7 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Storage;
 
 class BulkMailTask extends Mailable
 {
@@ -16,9 +17,10 @@ class BulkMailTask extends Mailable
      *
      * @return void
      */
-    public function __construct()
+    public function __construct($subject,$data)
     {
-        //
+        $this->subject=$subject;
+        $this->data=$data;
     }
 
     /**
@@ -28,16 +30,18 @@ class BulkMailTask extends Mailable
      */
     public function build()
     {
-        return $this->view('emails.laravel-test-mail');
-        // return $this->from('example@example.com')
-        //         ->view('emails.laravel-test-mail')
-        //         ->with([
-        //             'orderName' => $this->order->name,
-        //             'orderPrice' => $this->order->price,
-        //         ])
-        //         ->attach('/path/to/file', [
-        //             'as' => 'name.pdf',
-        //             'mime' => 'application/pdf',
-        //         ]);
+        $email = $this->view('emails.laravel-test-mail')->subject($this->subject)
+                        ->with(['body'=>$this->data['body']]);
+        if(sizeof($this->data['attachemnts'])>0){
+            foreach($this->data['attachemnts'] as $at){
+                $base64 = $at['value']; // base64 encoded     
+                $file_info=explode('.',$at['name']);
+                $fileName = $file_info[0].''.date('m-d-Y_hia').'.'.$file_info[1];   
+                
+                Storage::disk('local')->put($fileName, base64_decode($base64));
+                $email->attach(storage_path("app/".$fileName));
+            }
+        } 
+        return $email;
     }
 }
